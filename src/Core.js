@@ -25,10 +25,10 @@
 //
 
 var global = this;
-var channelId = Math.floor(Math.random() * 10000); // randomize the initial id in case of multiple closures loaded 
+var channelId = Math.floor(Math.random() * 10000); // randomize the initial id in case of multiple closures loaded
 var emptyFn = Function.prototype;
-var reURI = /^((http.?:)\/\/([^:\/\s]+)(:\d+)*)/; // returns groups for protocol (2), domain (3) and port (4) 
-var reParent = /[\-\w]+\/\.\.\//; // matches a foo/../ expression 
+var reURI = /^((http.?:)\/\/([^:\/\s]+)(:\d+)*)/; // returns groups for protocol (2), domain (3) and port (4)
+var reParent = /[\-\w]+\/\.\.\//; // matches a foo/../ expression
 var reDoubleSlash = /([^:])\/\//g; // matches // anywhere but in the protocol
 var namespace = ""; // stores namespace under which easyXDM object is stored on the page (empty if object is global)
 var easyXDM = {};
@@ -65,7 +65,7 @@ function isArray(o){
 // end
 function hasFlash(){
     var name = "Shockwave Flash", mimeType = "application/x-shockwave-flash";
-    
+
     if (!undef(navigator.plugins) && typeof navigator.plugins[name] == "object") {
         // adapted from the swfobject code
         var description = navigator.plugins[name].description;
@@ -79,7 +79,7 @@ function hasFlash(){
             flash = new ActiveXObject("ShockwaveFlash.ShockwaveFlash");
             flashVersion = Array.prototype.slice.call(flash.GetVariable("$version").match(/(\d+),(\d+),(\d+),(\d+)/), 1);
             flash = null;
-        } 
+        }
         catch (notSupportedException) {
         }
     }
@@ -178,7 +178,7 @@ if (!domIsReady) {
                 // http://javascript.nwbox.com/IEContentLoaded/
                 try {
                     document.documentElement.doScroll("left");
-                } 
+                }
                 catch (e) {
                     setTimeout(doScrollCheck, 1);
                     return;
@@ -188,7 +188,7 @@ if (!domIsReady) {
             doScrollCheck();
         }
     }
-    
+
     // A fallback to window.onload, that will always work
     on(window, "load", dom_onReady);
 }
@@ -249,7 +249,7 @@ function noConflict(ns){
     }
     _trace("Settings namespace to '" + ns + "'");
     // #endif
-    
+
     window.easyXDM = _easyXDM;
     namespace = ns;
     if (namespace) {
@@ -324,10 +324,10 @@ function resolveUrl(url){
         throw new Error("url is undefined or empty");
     }
     // #endif
-    
+
     // replace all // except the one in proto with /
     url = url.replace(reDoubleSlash, "$1/");
-    
+
     // If the url is a valid url we do nothing
     if (!url.match(/^(http||https):\/\//)) {
         // If this is a relative path
@@ -335,15 +335,15 @@ function resolveUrl(url){
         if (path.substring(path.length - 1) !== "/") {
             path = path.substring(0, path.lastIndexOf("/") + 1);
         }
-        
+
         url = location.protocol + "//" + location.host + path + url;
     }
-    
-    // reduce all 'xyz/../' to just '' 
+
+    // reduce all 'xyz/../' to just ''
     while (reParent.test(url)) {
         url = url.replace(reParent, "");
     }
-    
+
     // #ifdef debug
     _trace("resolved url '" + url + "'");
     // #endif
@@ -363,7 +363,7 @@ function appendQueryParameters(url, parameters){
         throw new Error("parameters is undefined or null");
     }
     // #endif
-    
+
     var hash = "", indexOf = url.indexOf("#");
     if (indexOf !== -1) {
         hash = url.substring(indexOf);
@@ -378,17 +378,48 @@ function appendQueryParameters(url, parameters){
     return url + (useHash ? "#" : (url.indexOf("?") == -1 ? "?" : "&")) + q.join("&") + hash;
 }
 
+/**
+ * Get properly prefixed parameter name.
+ * @param {Object} config Main config object holding prefix
+ * @param {String} param Base parameter name
+ * @return {String} Properly prefixed parameter name
+ */
+function getParam(config, param){
+    return config.param + '_' + param;
+}
+
+/**
+ * Get properly prefixed object keys.
+ * @param {Object} config Main config object holding prefix
+ * @param {Object} obj Object whose keys are base parameter names
+ * @return {Object} New object whose keys are properly prefixed parameter names
+ */
+function getParamObj(config, obj){
+    var paramObj = {};
+    for (var param in obj) {
+        paramObj[getParam(config, param)] = obj[param];
+    }
+    return paramObj;
+}
 
 // build the query object either from location.query, if it contains the xdm_e argument, or from location.hash
-var query = (function(input){
-    input = input.substring(1).split("&");
-    var data = {}, pair, i = input.length;
-    while (i--) {
-        pair = input[i].split("=");
-        data[pair[0]] = decodeURIComponent(pair[1]);
-    }
-    return data;
-}(/xdm_e=/.test(location.search) ? location.search : location.hash));
+var query = {};
+/**
+ * Build the query object from location.query or location.hash,<br/>
+ * depending on whether location.query contains the 'e' argument.
+ * @param {Object} config Main config object holding prefix
+ */
+function buildQuery(config){
+  config.prefix = config.prefix || 'xdm';
+
+  var input = new RegExp(getParam(config, 'e')).test(location.search) ? location.search : location.hash;
+  input = input.substring(1).split("&");
+  var pair, i = input.length;
+  while (i--) {
+      pair = input[i].split("=");
+      query[pair[0]] = decodeURIComponent(pair[1]);
+  }
+}
 
 /*
  * Helper methods
@@ -411,7 +442,7 @@ var getJSON = function(){
     var obj = {
         a: [1, 2, 3]
     }, json = "{\"a\":[1,2,3]}";
-    
+
     if (typeof JSON != "undefined" && typeof JSON.stringify === "function" && JSON.stringify(obj).replace((/\s/g), "") === json) {
         // this is a working JSON instance
         return JSON;
@@ -422,17 +453,17 @@ var getJSON = function(){
             cached.stringify = Object.toJSON;
         }
     }
-    
+
     if (typeof String.prototype.evalJSON === "function") {
         obj = json.evalJSON();
         if (obj.a && obj.a.length === 3 && obj.a[2] === 3) {
-            // this is a working parse method           
+            // this is a working parse method
             cached.parse = function(str){
                 return str.evalJSON();
             };
         }
     }
-    
+
     if (cached.stringify && cached.parse) {
         // Only memoize the result if we have valid instance
         getJSON = function(){
@@ -501,9 +532,9 @@ function createFrame(config){
         testForNamePropertyBug();
     }
     var frame;
-    // This is to work around the problems in IE6/7 with setting the name property. 
+    // This is to work around the problems in IE6/7 with setting the name property.
     // Internally this is set as 'submitName' instead when using 'iframe.name = ...'
-    // This is not required by easyXDM itself, but is to facilitate other use cases 
+    // This is not required by easyXDM itself, but is to facilitate other use cases
     if (HAS_NAME_PROPERTY_BUG) {
         frame = document.createElement("<iframe name=\"" + config.props.name + "\"/>");
     }
@@ -511,14 +542,14 @@ function createFrame(config){
         frame = document.createElement("IFRAME");
         frame.name = config.props.name;
     }
-    
+
     frame.id = frame.name = config.props.name;
     delete config.props.name;
-    
+
     if (typeof config.container == "string") {
         config.container = document.getElementById(config.container);
     }
-    
+
     if (!config.container) {
         // This needs to be hidden like this, simply setting display:none and the like will cause failures in some browsers.
         apply(frame.style, {
@@ -529,7 +560,7 @@ function createFrame(config){
         });
         config.container = document.body;
     }
-    
+
     // HACK: IE cannot have the src attribute set when the frame is appended
     //       into the container, so we set it to "javascript:false" as a
     //       placeholder for now.  If we left the src undefined, it would
@@ -537,18 +568,18 @@ function createFrame(config){
     //       warnings in IE6 when on an SSL parent page.
     var src = config.props.src;
     config.props.src = "javascript:false";
-    
+
     // transfer properties to the frame
     apply(frame, config.props);
-    
+
     frame.border = frame.frameBorder = 0;
     frame.allowTransparency = true;
     config.container.appendChild(frame);
-    
+
     if (config.onLoad) {
         on(frame, "load", config.onLoad);
     }
-    
+
     // set the frame URL to the proper value (we previously set it to
     // "javascript:false" to work around the IE issue mentioned above)
     if(config.usePost) {
@@ -576,7 +607,7 @@ function createFrame(config){
         frame.src = src;
     }
     config.props.src = src;
-    
+
     return frame;
 }
 
@@ -614,12 +645,12 @@ function checkAcl(acl, domain){
  */
 function prepareTransportStack(config){
     var protocol = config.protocol, stackEls;
-    config.isHost = config.isHost || undef(query.xdm_p);
+    config.isHost = config.isHost || undef(query[getParam(config, 'p')]);
     useHash = config.hash || false;
     // #ifdef debug
     _trace("preparing transport stack");
     // #endif
-    
+
     if (!config.props) {
         config.props = {};
     }
@@ -627,11 +658,11 @@ function prepareTransportStack(config){
         // #ifdef debug
         _trace("using parameters from query");
         // #endif
-        config.channel = query.xdm_c.replace(/["'<>\\]/g, "");
-        config.secret = query.xdm_s;
-        config.remote = query.xdm_e.replace(/["'<>\\]/g, "");
+        config.channel = query[getParam(config, 'c')].replace(/["'<>\\]/g, "");
+        config.secret = query[getParam(config, 's')];
+        config.remote = query[getParam(config, 'e')].replace(/["'<>\\]/g, "");
         ;
-        protocol = query.xdm_p;
+        protocol = query[getParam(config, 'p')];
         if (config.acl && !checkAcl(config.acl, config.remote)) {
             throw new Error("Access denied for " + config.remote);
         }
@@ -720,38 +751,40 @@ function prepareTransportStack(config){
                         // #ifdef debug
                         _trace("no image found, defaulting to using the window");
                         // #endif
-                        // If no local was set, and we are unable to find a suitable file, then we resort to using the current window 
+                        // If no local was set, and we are unable to find a suitable file, then we resort to using the current window
                         config.local = window;
                     }
                 }
-                
-                var parameters = {
-                    xdm_c: config.channel,
-                    xdm_p: 0
-                };
-                
+
+                var parameters = getParamObj(config, {
+                    c: config.channel,
+                    p: 0
+                });
+
                 if (config.local === window) {
                     // We are using the current window to listen to
                     config.usePolling = true;
                     config.useParent = true;
                     config.local = location.protocol + "//" + location.host + location.pathname + location.search;
-                    parameters.xdm_e = config.local;
-                    parameters.xdm_pa = 1; // use parent
+                    parameters[getParam(config, 'e')] = config.local;
+                    parameters[getParam(config, 'pa')] = 1; // use parent
                 }
                 else {
-                    parameters.xdm_e = resolveUrl(config.local);
+                    parameters[getParam(config, 'e')] = resolveUrl(config.local);
                 }
-                
+
                 if (config.container) {
                     config.useResize = false;
-                    parameters.xdm_po = 1; // use polling
+                    parameters[getParam(config, 'po')] = 1; // use polling
                 }
                 config.remote = appendQueryParameters(config.remote, parameters);
             }
             else {
                 apply(config, {
-                    useParent: !undef(query.xdm_pa),
-                    usePolling: !undef(query.xdm_po),
+                    channel: query[getParam(config, 'c')],
+                    remote: query[getParam(config, 'e')],
+                    useParent: !undef(query[getParam(config, 'pa')]),
+                    usePolling: !undef(query[getParam(config, 'po')]),
                     useResize: config.useParent ? false : config.useResize
                 });
             }
@@ -847,7 +880,7 @@ function removeFromStack(element){
 /*
  * Export the main object and any other methods applicable
  */
-/** 
+/**
  * @class easyXDM
  * A javascript library providing cross-browser, cross-domain messaging/RPC.
  * @version %%version%%
@@ -876,7 +909,7 @@ apply(easyXDM, {
      * @param {boolean} noOverwrite Set to True to only set non-existing properties.
      */
     apply: apply,
-    
+
     /**
      * A safe implementation of HTML5 JSON. Feature testing is used to make sure the implementation works.
      * @return {JSON} A valid JSON conforming object, or null if not found.
