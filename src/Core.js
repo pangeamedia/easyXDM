@@ -769,10 +769,8 @@ function prepareTransportStack(config){
             }
             else {
                 apply(config, {
-                    channel: query.c,
-                    remote: query.e,
-                    useParent: !undef(query.pa),
-                    usePolling: !undef(query.po),
+                    useParent: !undef(query.xdm_pa),
+                    usePolling: !undef(query.xdm_po),
                     useResize: config.useParent ? false : config.useResize
                 });
             }
